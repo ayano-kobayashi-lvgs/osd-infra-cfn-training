@@ -1,0 +1,1139 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This template creates osd-test common.
+
+#===========================================
+# Parameter
+#===========================================
+Parameters:
+  ProjectName:
+    Description: Name of this project.
+    Type: String
+    Default: osd-test-1
+
+  BastionEnvType:
+    Description: Bastion environment type
+    Type: String
+    Default: bastion
+
+  StagingEnvType:
+    Description: Staging environment type
+    Type: String
+    Default: stg
+
+  ProductionEnvType:
+    Description: Production environment type
+    Type: String
+    Default: prod
+
+  KeyPairName:
+    Description: Name of EC2 key pair.
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: osd-test
+
+  EC2InstanceType:
+    Description: Instance type of EC2. Default is t2.nano.
+    Type: String
+    Default: t2.nano
+
+  MultiAZ:
+    Default: true
+    Type: String
+    AllowedValues:
+      - true
+      - false
+
+  AllCIDR:
+    Description: CIDR of all traffic
+    Type: String
+    Default: 0.0.0.0/0
+
+  VpcCIDR:
+    Description: CIDR of VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetA1CIDR:
+    Description: CIDR of public subnet 1 in AZ-a
+    Type: String
+    Default: 10.0.1.0/24
+
+  PrivateSubnetA2CIDR:
+    Description: CIDR of private subnet 2 in AZ-c
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnetA3CIDR:
+    Description: CIDR of private subnet 3 in AZ-c
+    Type: String
+    Default: 10.0.3.0/24
+
+  PublicSubnetC1CIDR:
+    Description: CIDR of public subnet 1 in AZ-a
+    Type: String
+    Default: 10.0.4.0/24
+
+  PrivateSubnetC2CIDR:
+    Description: CIDR of private subnet 2 in AZ-c
+    Type: String
+    Default: 10.0.5.0/24
+
+  PrivateSubnetC3CIDR:
+    Description: CIDR of private subnet 2 in AZ-c
+    Type: String
+    Default: 10.0.6.0/24
+
+  HanzomonWeWorkCIDR:
+    Description: CIDR of Hanzomon Office
+    Type: String
+    Default: 61.120.203.19/32
+
+#===========================================
+# Mappings
+#===========================================
+Mappings:
+  RegionMap:
+    ap-northeast-1:
+      AppImageId: ami-0c7cb70d3eb61492b
+
+#===========================================
+# Resources
+#===========================================
+Resources:
+  # ------------------------------------------
+  # VPC
+  # ------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-vpc
+
+  # ------------------------------------------
+  # Internet Gateway
+  # ------------------------------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # ------------------------------------------
+  # Subnet
+  # ------------------------------------------
+  PublicSubnetApA1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: !Ref PublicSubnetA1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${BastionEnvType}-subnet-public-ap-a1
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  PrivateSubnetApA2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: !Ref PrivateSubnetA2CIDR
+      # necessary for internet connection without NAT Gateway
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-subnet-private-ap-a2
+        - Key: env
+          Value: !Ref StagingEnvType
+
+  PrivateSubnetApA3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: !Ref PrivateSubnetA3CIDR
+      # necessary for internet connection without NAT Gateway
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${ProductionEnvType}-subnet-private-ap-a3
+        - Key: env
+          Value: !Ref ProductionEnvType
+
+  PublicSubnetApC1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub ${AWS::Region}c
+      CidrBlock: !Ref PublicSubnetC1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${BastionEnvType}-subnet-public-ap-c1
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  PrivateSubnetApC2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub ${AWS::Region}c
+      CidrBlock: !Ref PrivateSubnetC2CIDR
+      # necessary for internet connection without NAT Gateway
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-subnet-private-ap-c2
+        - Key: env
+          Value: !Ref StagingEnvType
+
+  PrivateSubnetApC3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub ${AWS::Region}c
+      CidrBlock: !Ref PrivateSubnetC3CIDR
+      # necessary for internet connection without NAT Gateway
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${ProductionEnvType}-subnet-private-ap-c3
+        - Key: env
+          Value: !Ref ProductionEnvType
+
+  # ------------------------------------------
+  # RouteTable
+  # ------------------------------------------
+  PublicRouteTableA1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${BastionEnvType}-rtb-public-a1
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  PrivateRouteTableA2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-rtb-private-a2
+        - Key: env
+          Value: !Ref StagingEnvType
+
+  PrivateRouteTableA3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${ProductionEnvType}-rtb-private-a3
+        - Key: env
+          Value: !Ref ProductionEnvType
+
+  PrivateRouteTableC3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${ProductionEnvType}-rtb-private-c3
+        - Key: env
+          Value: !Ref ProductionEnvType
+
+  PublicRouteTableC1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${BastionEnvType}-rtb-public-c1
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  PrivateRouteTableC2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-rtb-private-c2
+        - Key: env
+          Value: !Ref StagingEnvType
+
+  PublicRouteA1:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTableA1
+      DestinationCidrBlock: !Ref AllCIDR
+      GatewayId: !Ref InternetGateway
+
+  PrivateRouteA2:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA2
+      DestinationCidrBlock: !Ref AllCIDR
+      GatewayId: !Ref InternetGateway
+
+  PrivateRouteA3:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA3
+      DestinationCidrBlock: !Ref AllCIDR
+      GatewayId: !Ref InternetGateway
+
+  PublicRouteC1:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTableC1
+      DestinationCidrBlock: !Ref AllCIDR
+      GatewayId: !Ref InternetGateway
+
+  PrivateRouteC2:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableC2
+      DestinationCidrBlock: !Ref AllCIDR
+      GatewayId: !Ref InternetGateway
+
+  PrivateRouteC3:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableC3
+      DestinationCidrBlock: !Ref AllCIDR
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetApA1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTableA1
+      SubnetId: !Ref PublicSubnetApA1
+
+  PrivateSubnetApA2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA2
+      SubnetId: !Ref PrivateSubnetApA2
+
+  PrivateSubnetApA3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA3
+      SubnetId: !Ref PrivateSubnetApA3
+
+  PublicSubnetApC1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTableC1
+      SubnetId: !Ref PublicSubnetApC1
+
+  PrivateSubnetApC2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableC2
+      SubnetId: !Ref PrivateSubnetApC2
+
+  PrivateSubnetApC3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableC3
+      SubnetId: !Ref PrivateSubnetApC3
+
+  # ---------------------------
+  # Security Group ALB
+  # ---------------------------
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-alb-sg
+      GroupDescription: Security group for ALB
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllCIDR
+          Description: HTTP Access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllCIDR
+          Description: HTTPS Access
+
+  # ---------------------------
+  # Security Group EC2 Bastion
+  # ---------------------------
+  EC2BastionInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-${BastionEnvType}-sg-ap-a1
+      GroupDescription: Security Group for EC2 Bastion
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref HanzomonWeWorkCIDR
+          Description: Hanzomon WeWork
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${BastionEnvType}-sg-ap-a1
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  # ---------------------------
+  # Security Group EC2 Staging
+  # ---------------------------
+  EC2StagingInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-${StagingEnvType}-sg-ap-a2
+      GroupDescription: Security Group for EC2 Staging
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllCIDR
+          Description: HTTP Access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllCIDR
+          Description: HTTPS Access
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-sg-ap-a2
+        - Key: env
+          Value: !Ref StagingEnvType
+
+  # ---------------------------
+  # Security Group EC2 Production
+  # ---------------------------
+  EC2ProductionInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-${ProductionEnvType}-sg-ap-a3
+      GroupDescription: Security Group for EC2 Production
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllCIDR
+          Description: HTTP Access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllCIDR
+          Description: HTTPS Access
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${ProductionEnvType}-sg-ap-a3
+        - Key: env
+          Value: !Ref ProductionEnvType
+
+  # ---------------------------
+  # Security Group Rule ALB
+  # ---------------------------
+  AlbEgressHTTPAccessToEC2Staging:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt AlbSecurityGroup.GroupId
+      Description: HTTP Access to EC2 Staging SG
+      DestinationSecurityGroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  AlbEgressHTTPSAccessToEC2Staging:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt AlbSecurityGroup.GroupId
+      Description: HTTPS Access to EC2 Staging SG
+      DestinationSecurityGroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  AlbEgressHTTPAccessToEC2Production:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt AlbSecurityGroup.GroupId
+      Description: HTTP Access to EC2 Production SG
+      DestinationSecurityGroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  AlbEgressHTTPSAccessToEC2Production:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt AlbSecurityGroup.GroupId
+      Description: HTTPS Access to EC2 Production SG
+      DestinationSecurityGroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  # ---------------------------
+  # Security Group Rule EC2 Bastion
+  # ---------------------------
+  EC2BastionEgressSSHAccessToEC2Staging:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt EC2BastionInstanceSecurityGroup.GroupId
+      Description: SSH Access from EC2 Staging SG
+      DestinationSecurityGroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  EC2BastionEgressSSHAccessToEC2Production:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt EC2BastionInstanceSecurityGroup.GroupId
+      Description: SSH Access from EC2 Production SG
+      DestinationSecurityGroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  # ---------------------------
+  # Security Group Rule EC2 Staging
+  # ---------------------------
+  EC2StagingIngressSSHAccessFromEC2Bastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      Description: SSH Access from EC2 Bastion SG
+      SourceSecurityGroupId: !GetAtt EC2BastionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  EC2StagingIngressHTTPAccessFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      Description: HTTP Access from ALB SG
+      SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  EC2StagingIngressHTTPSAccessFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      Description: HTTPS Access from ALB SG
+      SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  EC2StagingIngressSSHAccessToEC2Bastion:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt EC2StagingInstanceSecurityGroup.GroupId
+      Description: SSH Access to EC2 Bastion SG
+      DestinationSecurityGroupId: !GetAtt EC2BastionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  # ---------------------------
+  # Security Group Rule EC2 Production
+  # ---------------------------
+  EC2ProductionIngressSSHAccessToEC2Bastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      Description: SSH Access from EC2 Bastion SG
+      SourceSecurityGroupId: !GetAtt EC2BastionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  EC2ProductionIngressHTTPAccessFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      Description: HTTP Access from ALB SG
+      SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+
+  EC2ProductionIngressHTTPSAccessFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      Description: HTTPS Access from ALB SG
+      SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  EC2ProductionEgressHTTPSAccessToEC2Bastion:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt EC2ProductionInstanceSecurityGroup.GroupId
+      Description: HTTPS Access from ALB SG
+      DestinationSecurityGroupId: !GetAtt EC2BastionInstanceSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+
+  # ------------------------------------------
+  # EC2 bastion
+  # ------------------------------------------
+  BastionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Sub ${AWS::Region}a
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 8
+      ImageId: !FindInMap
+        - RegionMap
+        - !Ref AWS::Region
+        - AppImageId
+      InstanceType: !Ref EC2InstanceType
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref EC2BastionInstanceSecurityGroup
+          SubnetId: !Ref PublicSubnetApA1
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-ec2-${BastionEnvType}
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  # ------------------------------------------
+  # EC2 staging
+  # ------------------------------------------
+  StagingInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 8
+      ImageId: !FindInMap
+        - RegionMap
+        - !Ref AWS::Region
+        - AppImageId
+      InstanceType: !Ref EC2InstanceType
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        # necessary for internet connection without NAT Gateway
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref EC2StagingInstanceSecurityGroup
+          SubnetId: !Ref PrivateSubnetApA2
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-ec2-${StagingEnvType}
+        - Key: env
+          Value: !Ref StagingEnvType
+
+  # ------------------------------------------
+  # EC2 production
+  # ------------------------------------------
+  ProductionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 8
+      ImageId: !FindInMap
+        - RegionMap
+        - !Ref AWS::Region
+        - AppImageId
+      InstanceType: !Ref EC2InstanceType
+      KeyName: !Ref KeyPairName
+      # necessary for internet connection without NAT Gateway
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref EC2ProductionInstanceSecurityGroup
+          SubnetId: !Ref PrivateSubnetApA3
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-ec2-${ProductionEnvType}
+        - Key: env
+          Value: !Ref ProductionEnvType
+
+  # ------------------------------------------
+  # ALB
+  # ------------------------------------------
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Name: !Sub ${ProjectName}-alb
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+      Subnets:
+        - !Ref PublicSubnetApA1
+        - !Ref PublicSubnetApC1
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-alb
+
+  AlbTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Name: !Sub ${ProjectName}-${StagingEnvType}-tg-alb
+      Protocol: HTTP
+      Port: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher:
+        HttpCode: 200
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-tg-alb
+      Targets:
+        - Id: !Ref StagingInstance
+          Port: 80
+
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref AlbTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # ------------------------------------------------------------
+  #  Network Acl Public Subnet Ap A1 EC2 Bastion
+  # ------------------------------------------------------------
+  PublicSubnetApA1NetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${BastionEnvType}-acl-subnet-public-ap-a1
+        - Key: env
+          Value: !Ref BastionEnvType
+
+  # SSH HanzomonWeWork inbound
+  InboundSSHNetworkAclEntryFromHanzomonWeWork:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+      RuleNumber: 100
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref HanzomonWeWorkCIDR
+      PortRange:
+        From: 22
+        To: 22
+
+  # SSH Tmp Port inbound
+  InboundApA1SSHNetworkAclEntryTmpPort:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+      RuleNumber: 110
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 32768
+        To: 65535
+
+  # SSH HanzomonWeWork outbound
+  OutboundApA1SSHNetworkAclEntryToHanzomonWeWork:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+      RuleNumber: 100
+      Protocol: 6
+      Egress: true
+      RuleAction: allow
+      CidrBlock: !Ref HanzomonWeWorkCIDR
+      PortRange:
+        From: 22
+        To: 22
+
+  # SSH EC2 Staging outbound
+  OutboundApA1SSHNetworkAclEntryToEC2Staging:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+      RuleNumber: 110
+      Protocol: 6
+      Egress: true
+      RuleAction: allow
+      CidrBlock: !Ref PrivateSubnetA2CIDR
+      PortRange:
+        From: 22
+        To: 22
+
+  # SSH EC2 Production outbound
+  OutboundApA1SSHNetworkAclEntryToEC2Production:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+      RuleNumber: 140
+      Protocol: 6
+      Egress: true
+      RuleAction: allow
+      CidrBlock: !Ref PrivateSubnetA3CIDR
+      PortRange:
+        From: 22
+        To: 22
+
+  # SSH Tmp Port outbound
+  OutboundApA1SSHNetworkAclEntryTmpPort:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+      RuleNumber: 130
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 32768
+        To: 65535
+
+  PublicSubnetApA1NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetApA1
+      NetworkAclId: !Ref PublicSubnetApA1NetworkAcl
+
+  # ------------------------------------------------------------
+  #  Network Acl Private Subnet Ap A2 EC2 Staging
+  # ------------------------------------------------------------
+  PrivateSubnetApA2NetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${StagingEnvType}-acl-subnet-private-ap-a2
+
+  # HTTP inbound
+  InboundApA2HTTPNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA2NetworkAcl
+      RuleNumber: 100
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 80
+        To: 80
+
+  # HTTPS inbound
+  InboundApA2HTTPSNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA2NetworkAcl
+      RuleNumber: 110
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 443
+        To: 443
+
+  # SSH EC2 Bastion inbound
+  InboundApA2SSHNetworkAclEntryFromEC2Bastion:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA2NetworkAcl
+      RuleNumber: 120
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 22
+        To: 22
+
+  # SSH Tmp port inbound
+  InboundApA2SSHNetworkAclEntryTmpPort:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA2NetworkAcl
+      RuleNumber: 130
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 32768
+        To: 65535
+
+  # All traffic outbound
+  OutboundApA2AllTrafficAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA2NetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      Egress: true
+      CidrBlock: !Ref AllCIDR
+
+  PrivateSubnetApA2NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetApA2
+      NetworkAclId: !Ref PrivateSubnetApA2NetworkAcl
+
+  # ------------------------------------------------------------
+  #  Network Acl Private Subnet Ap A3 EC2 Production
+  # ------------------------------------------------------------
+  PrivateSubnetApA3NetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${ProductionEnvType}-acl-subnet-private-ap-a3
+
+  # HTTP inbound
+  InboundApA3HTTPNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA3NetworkAcl
+      RuleNumber: 100
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 80
+        To: 80
+
+  # HTTPS inbound
+  InboundApA3HTTPSNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA3NetworkAcl
+      RuleNumber: 110
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 443
+        To: 443
+
+  # SSH EC2 Bastion inbound
+  InboundApA3SSHNetworkAclEntryFromEC2Bastion:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA3NetworkAcl
+      RuleNumber: 120
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 22
+        To: 22
+
+  # SSH Tmp port inbound
+  InboundApA3SSHNetworkAclEntryTmpPort:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA3NetworkAcl
+      RuleNumber: 130
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: !Ref AllCIDR
+      PortRange:
+        From: 32768
+        To: 65535
+
+  # All traffic outbound
+  OutboundApA3AllTrafficAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetApA3NetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      Egress: true
+      CidrBlock: !Ref AllCIDR
+
+  PrivateSubnetApA3NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetApA3
+      NetworkAclId: !Ref PrivateSubnetApA3NetworkAcl
+
+#===========================================
+# Output
+#===========================================
+Outputs:
+  MyStackRegion:
+    Value: !Ref AWS::Region
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${ProjectName}-vpc-id
+
+  InternetGatewayId:
+    Value: !Ref InternetGateway
+    Export:
+      Name: !Sub ${ProjectName}-igw-id
+
+  PublicSubnetApA1:
+    Value: !Ref PublicSubnetApA1
+    Export:
+      Name: !Sub ${ProjectName}-${BastionEnvType}-subnet-public-ap-a1
+
+  PrivateSubnetApA2:
+    Value: !Ref PrivateSubnetApA2
+    Export:
+      Name: !Sub ${ProjectName}-${StagingEnvType}-subnet-private-ap-a2
+
+  PrivateSubnetApA3:
+    Value: !Ref PrivateSubnetApA3
+    Export:
+      Name: !Sub ${ProjectName}-${ProductionEnvType}-subnet-private-ap-a3
+
+  PublicSubnetApC1:
+    Value: !Ref PublicSubnetApC1
+    Export:
+      Name: !Sub ${ProjectName}-${BastionEnvType}-subnet-public-ap-c1
+
+  PrivateSubnetApC2:
+    Value: !Ref PrivateSubnetApC2
+    Export:
+      Name: !Sub ${ProjectName}-${StagingEnvType}-subnet-private-ap-c2
+
+  PrivateSubnetApC3:
+    Value: !Ref PrivateSubnetApC3
+    Export:
+      Name: !Sub ${ProjectName}-${ProductionEnvType}-subnet-private-ap-c3
+
+  AlbId:
+    Description: ALB ID
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub ${ProjectName}-alb-id
+
+  AlbTargetGroupId:
+    Description: ALBTargetGroup ID
+    Value: !Ref AlbTargetGroup
+    Export:
+      Name: !Sub ${ProjectName}-${StagingEnvType}-tg-alb-id
+
+  EC2BastionInstanceId:
+    Description: Instance ID of EC2 Bastion
+    Value: !Ref BastionInstance
+    Export:
+      Name: !Sub ${ProjectName}-${BastionEnvType}-ec2-ap-id
+
+  EC2StagingInstanceId:
+    Description: Instance ID of EC2 Staging
+    Value: !Ref StagingInstance
+    Export:
+      Name: !Sub ${ProjectName}-${StagingEnvType}-ec2-ap-id
+
+  EC2ProductionInstanceId:
+    Description: Instance ID of EC2 Production
+    Value: !Ref ProductionInstance
+    Export:
+      Name: !Sub ${ProjectName}-${ProductionEnvType}-ec2-ap-id
+
+  EC2BastionPrivateIPAddress:
+    Description: Private IP address of EC2 Bastion
+    Value: !Ref BastionInstance
+    Export:
+      Name: !Sub ${ProjectName}-${BastionEnvType}-ec2-ap-ip
+
+  EC2StagingPrivateIPAddress:
+    Description: Private IP address of EC2 Staging
+    Value: !Ref StagingInstance
+    Export:
+      Name: !Sub ${ProjectName}-${StagingEnvType}-ec2-ap-ip
+
+  EC2ProductionPrivateIPAddress:
+    Description: Private IP address of EC2 Production
+    Value: !Ref ProductionInstance
+    Export:
+      Name: !Sub ${ProjectName}-${ProductionEnvType}-ec2-ap-ip
+
+  AlbSecurityGroupId:
+    Description: AlbSecurityGroup ID
+    Value: !Ref AlbSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-alb-sg-id
+
+  EC2BastionInstanceSecurityGroupId:
+    Description: Security Group ID of EC2 Bastion
+    Value: !Ref EC2BastionInstanceSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${BastionEnvType}-sg-id
+
+  EC2StagingInstanceSecurityGroupId:
+    Description: Security Group ID of EC2 Staging
+    Value: !Ref EC2StagingInstanceSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${StagingEnvType}-sg-id
+
+  EC2ProductionInstanceSecurityGroupId:
+    Description: Security Group ID of EC2 Production
+    Value: !Ref EC2ProductionInstanceSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${ProductionEnvType}-sg-id
